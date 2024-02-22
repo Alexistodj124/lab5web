@@ -73,13 +73,35 @@ messageInput.id = 'message';
 messageInput.placeholder = 'Type your message...';
 
 //Message input
-messageInput.style.width = 'calc(100% - 100px)'; // Adjust width to accommodate the send button
+messageInput.style.width = 'calc(100% - 200px)'; // Adjust width to accommodate the send button
 messageInput.style.height = '10vh';
 messageInput.style.padding = '10px';
 messageInput.style.boxSizing = 'border-box';
 messageInput.style.border = '1px solid black';
 messageInput.style.display = 'inline-block'; 
 
+// Counter
+const charCounter = document.createElement('span');
+charCounter.textContent = '140 characters remaining';
+charCounter.style.width = '99px';
+charCounter.style.height = '10vh';
+charCounter.style.color = 'black';
+charCounter.style.border = '1px solid black';
+charCounter.style.display = 'block'; 
+charCounter.style.display = 'flex';
+charCounter.style.justifyContent = 'center'; 
+charCounter.style.alignItems = 'center';
+charCounter.style.background = '#8B0000';
+charCounter.style.float = 'left'; 
+
+// 140 caracters
+messageInput.addEventListener('input', function() {
+  if (this.value.length > 140) {
+      this.value = this.value.slice(0, 140);
+  }
+  const remainingChars = 140 - this.value.length;
+  charCounter.textContent = `${remainingChars} characters remaining`;
+});
 
 // Create send button
 const sendButton = document.createElement('button');
@@ -88,7 +110,7 @@ sendButton.onclick = sendMessage;
 messageInput.addEventListener('keypress', handleKeyPress);
 
 // Send button
-sendButton.style.width = '100px'; 
+sendButton.style.width = '99px'; 
 sendButton.style.height = '10vh';
 sendButton.style.padding = '10px';
 sendButton.style.boxSizing = 'border-box';
@@ -101,7 +123,9 @@ sendButton.style.float = 'right';
 document.body.appendChild(titleBox);
 document.body.appendChild(chatDiv);
 document.body.appendChild(messageInput);
+document.body.appendChild(charCounter);
 document.body.appendChild(sendButton);
+
 document.body.style.background = 'black';
 
 // ENter send
@@ -113,7 +137,25 @@ function handleKeyPress(event) {
 
 //Send Message
 function sendMessage() {
-  const message = document.createTextNode(messageInput.value);
+  const message = messageInput.value.trim();
+  if (message !== '') {
+    const ahora = new Date();
+    const horaActual = ahora.toLocaleTimeString();
+    enviarPost(
+      (data = {
+        username: "Alexis",
+        message: message,
+        created_at: horaActual,
+      })
+    );
+  }
+  obtenerDatosDeAPI();
+  messageInput.value = '';
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+// Escribir mensajes servidor
+function writeMessages(mensaje) {
+  const message = document.createTextNode(mensaje);
   if (message.textContent.trim() !== '') {
     const messageContainer = document.createElement('div');
     messageContainer.style.backgroundColor = '#FFCCCC';
@@ -122,10 +164,77 @@ function sendMessage() {
     messageContainer.style.margin = '10px 0';
     messageContainer.style.maxWidth = '70%';
     messageContainer.style.alignSelf = 'flex-end';
+    messageContainer.style.fontSize = '25px'; 
+    messageContainer.style.whiteSpace = 'pre-wrap'; 
     messageContainer.appendChild(message);
     chatDiv.appendChild(messageContainer);
-    messageInput.value = '';
     chatDiv.scrollTop = chatDiv.scrollHeight;
-
   }
 }
+
+// ENVIAR MENSAJE A SERVIDOR
+function enviarPost(data) {
+  const url = "https://chat.arpanetos.lol/messages"; 
+
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Hubo un problema al enviar el mensaje.");
+      }
+      return response.json();
+    })
+    .then((data) => {
+      console.log("Mensaje enviado al servidor:", data);
+    })
+    .catch((error) => {
+      console.error("Error al enviar mensaje:", error);
+    });
+}
+
+// RESIVIR MENSAJES DE SERVIDOR
+function obtenerDatosDeAPI() {
+  const url = "https://chat.arpanetos.lol/messages";
+   fetch(url)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("La solicitud no fue exitosa");
+      }
+      return response.json();
+    })
+    .then((data) => {
+      console.log(data)
+      for (let i = data.length-1; i > 0; i--) {
+        writeMessages(
+          data[i].message,
+        );
+      }
+      
+    })
+    .catch((error) => {
+      return error;
+    });
+    
+}
+
+// GENERA LOS MESAJES DE SERVIDOR EN CHAT
+async function generarChat() {
+  try {
+    lista = await obtenerDatosDeAPI();
+  } catch (error) {
+    console.error("Error al obtener datos de la API:", error);
+  }
+
+  for (let i = lista.length-1; i > 0; i--) {
+    sendMessage(
+      lista[i].message,
+    );
+  }
+}
+
+obtenerDatosDeAPI();
